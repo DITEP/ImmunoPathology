@@ -26,7 +26,10 @@ DDN[is.na(DDN[,1]),3] <-DDN[is.na(DDN[,1]),2]
 DDN[is.na(DDN[,2])&is.na(DDN[,3]),3] <-DDN[is.na(DDN[,2])&is.na(DDN[,3]),1]
 
 # add to the table
-FUSIHC[is.na(FUSIHC$DATE_DECES_Simbad),"DATE_DECES_Simbad"]<-DDN[,3]
+#FUSIHC[is.na(FUSIHC$DATE_DECES_Simbad),"DATE_DECES_Simbad"]<-DDN[,3] # error!
+# instead
+FUSIHC[!is.na(FUSIHC$DATE_DECES_Simbad),"DDN"]<-FUSIHC$DATE_DECES_Simbad[!is.na(FUSIHC$DATE_DECES_Simbad)]
+FUSIHC[is.na(FUSIHC$DATE_DECES_Simbad),"DDN"]<-DDN[,3]
 
 # check
 data.frame(DC=as.Date(FUSIHC$DATE_DECES_Simbad,format="%d/%m/%Y"),B=as.Date(FUSIHC$date_biopsie,format="%d/%m/%Y"))
