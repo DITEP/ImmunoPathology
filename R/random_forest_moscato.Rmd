@@ -1,0 +1,88 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+## Essai du Modele sans test ni validation set
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library("randomForestSRC")
+library("survival")
+library("pec")
+all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep="\t", na.strings="NA", dec=",")
+n_tree_values <- list(43,45,47)
+n_split_values <- list(4,5)
+split_rule_values <- list("logrank") 
+n <- names(all_data)
+surv <- as.formula(paste("Surv(OS,STATUS)~",paste(n[!n %in% "y"], collapse = " + ")))
+
+x<- NULL
+best_n_tree <-NULL
+best_n_split <- NULL
+best_split_rule <- NULL
+for (n_tree in n_tree_values) {
+  for (n_split in n_split_values){
+    for (split_rule in split_rule_values){
+      rfsrc.obj <- rfsrc(surv, data = all_data, nsplit = as.integer(n_split), ntree = n_tree, splitrule = split_rule)
+      prederr <- pec(list(rfsrc.obj), data= all_data, splitMethod = "cv10", B = 20, reference = FALSE)$BootCvErr$rfsrc
+      for (i in prederr) {
+          if (!is.nan(i)) {
+            score<-i
+          }
+      }
+      print(score)
+      if (is.null(x)|| x>score) {
+        x<-score
+        best_n_tree <-n_tree
+        best_n_split <- n_split
+        best_split_rule <- split_rule
+      }
+    }
+  }
+}
+res <- list(x,best_n_tree,best_n_split,best_split_rule)
+print(res)
+```
+
+
+## Entrainement du modèle avec les hyperparamètres séléctionnés à la cross-validation precedentes
+
+```{r message=FALSE, warning=FALSE}
+v.out <- rfsrc(surv,all_data,nsplit = res[[3]], ntree=res[[2]], forest=T, splitrule = res [[4]])
+print(v.out)
+prederr<-pec(list(v.out), data= all_data, splitMethod = "cv10", B = 20, reference = FALSE,maxtime = 400)
+```
+## Affichage de la coube du score de Brier
+```{r}
+plot(prederr)
+```
+
+## Tracer d'une courbe de survie pour un patient
+```{r}
+values<- list()
+for (i in 1:100) {
+  values[['y']][[i]] <- predictSurvProb(v.out, newdata = all_data[4,], times = i * 36,525)
+  values[['x']][[i]]<-i/10
+  
+}
+plot(values,ylim = c(0,1), ylab = "Probabilité de survie", xlab = "Durée en année")
+```
+## entrainement du modèle avec validation et test set 
+
+```{r}
+
+
+## 75% of the sample size
+smp_size_validation <- floor(0.75 * nrow(all_data))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(all_data)), size = smp_size)
+train <- all_data[train_ind, ]
+test <- all_data[-train_ind, ]
+smp_size_validation <- floor(0.5 * nrow(test))
+validation_ind <-sample(seq_len(nrow(test)), size = smp_sizevalidation)
+
+validation <-
+test <- all_data[-train_ind, ]
+```
+
