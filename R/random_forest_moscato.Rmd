@@ -8,7 +8,8 @@ output: html_notebook
 library("randomForestSRC")
 library("survival")
 library("pec")
-all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep="\t", na.strings="NA", dec=",")
+#all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep="\t", na.strings="NA", dec=",")
+all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep=";", na.strings="NA", dec=",",row.names=1)[,-c(1,14)]
 n_tree_values <- list(43,45,47)
 n_split_values <- list(4,5)
 split_rule_values <- list("logrank") 
@@ -72,7 +73,8 @@ plot(values,ylim = c(0,1), ylab = "Probabilité de survie", xlab = "Durée en an
 
 
 ## 75% of the sample size
-smp_size_validation <- floor(0.75 * nrow(all_data))
+#smp_size_validation <- floor(0.75 * nrow(all_data))
+smp_size <- floor(0.75 * nrow(all_data))
 
 ## set the seed to make your partition reproducible
 set.seed(123)
@@ -85,4 +87,13 @@ validation_ind <-sample(seq_len(nrow(test)), size = smp_sizevalidation)
 validation <-
 test <- all_data[-train_ind, ]
 ```
+
+##Find.interaction
+```{r}
+F.I<-find.interaction(v.out)
+
+p.v <- plot.variable(v.out,plots.per.page = 3,surv.type = "surv",partial = TRUE, smooth.lines = TRUE,sorted = TRUE,granule = 5)
+plot.variable(p.v)
+```
+
 
