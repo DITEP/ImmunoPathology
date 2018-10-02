@@ -2,7 +2,7 @@ rm(list=ls())
 library(dplyr)
 library(dummies)
 
-########### PROJET INNO : 2eme JET DE DONNÉES ##########################
+########### PROJET INNO : 2eme JET DE DONNÃ‰ES ##########################
 
 # Lecture des fichiers
 IHC <- read.csv(file="C:/Users/nsanchezescobar/Documents/Projet inno/IHC_total.csv", header=TRUE, sep=";", na.strings="NA", dec=",")
@@ -54,10 +54,19 @@ RESULT <- merge(test.CD3, test.CD8, by = "NIP")
 RESULT <- merge(RESULT, test.FOXP3, by  = "NIP")
 
 
+#dClinicRNA <- data.frame(ClinicRNA$NIP.1, ClinicRNA$Sexe_patient, ClinicRNA$GlobalHisto, ClinicRNA$TCGA, 
+#                         ClinicRNA$CODE_PATHOLOGIE_Simbad, ClinicRNA$Organe, ClinicRNA$Lesion, ClinicRNA$CD274, 
+#                         ClinicRNA$PDCD1, ClinicRNA$CD8A, ClinicRNA$CD3G, ClinicRNA$CD3E, ClinicRNA$CD3D, 
+#                         ClinicRNA$FOXP3, ClinicRNA$LAG3, ClinicRNA$Age, ClinicRNA$STATUS, ClinicRNA$OS)
+
+DiffDay<-as.Date(ClinicRNA$date_biopsie,"%d/%m/%Y")-as.Date(ClinicRNA$DATE_NAISSANCE_Simbad,"%d/%m/%Y")
+DiffMonth<-as.numeric(floor((DiffDay/365)*12))
+
 dClinicRNA <- data.frame(ClinicRNA$NIP.1, ClinicRNA$Sexe_patient, ClinicRNA$GlobalHisto, ClinicRNA$TCGA, 
                          ClinicRNA$CODE_PATHOLOGIE_Simbad, ClinicRNA$Organe, ClinicRNA$Lesion, ClinicRNA$CD274, 
                          ClinicRNA$PDCD1, ClinicRNA$CD8A, ClinicRNA$CD3G, ClinicRNA$CD3E, ClinicRNA$CD3D, 
-                         ClinicRNA$FOXP3, ClinicRNA$LAG3, ClinicRNA$Age, ClinicRNA$STATUS, ClinicRNA$OS)
+                         ClinicRNA$FOXP3, ClinicRNA$LAG3, DiffMonth, ClinicRNA$STATUS, ClinicRNA$OS)
+
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.NIP.1"] <- "NIP"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.Sexe_patient"] <- "Sexe_patient"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.GlobalHisto"] <- "GlobalHisto"
@@ -73,28 +82,37 @@ names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.CD3E"] <- "CD3E"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.CD3D"] <- "CD3D"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.FOXP3"] <- "FOXP3"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.LAG3"] <- "LAG3"
-names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.Age"] <- "Age"
+#names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.Age"] <- "Age"
+names(dClinicRNA)[names(dClinicRNA) == "DiffMonth"]<-"Age_biopsie"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.STATUS"] <- "STATUS"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.OS"] <- "OS"
 
-dMOSCATO <- data.frame(MOSCATO$NIP, MOSCATO$MP_POURCENT0_PDL1, MOSCATO$MP_POURCENT1_PDL1, MOSCATO$MP_POURCENT2_PDL1, MOSCATO$MP_POURCENT3_PDL1, MOSCATO$MP_PDL1_PCI)
+#dMOSCATO <- data.frame(MOSCATO$NIP, MOSCATO$MP_POURCENT0_PDL1, MOSCATO$MP_POURCENT1_PDL1, MOSCATO$MP_POURCENT2_PDL1, MOSCATO$MP_POURCENT3_PDL1, MOSCATO$MP_PDL1_PCI)
+dMOSCATO <- data.frame(MOSCATO$NIP, MOSCATO$MP_POURCENT0, MOSCATO$MP_POURCENT1, MOSCATO$MP_POURCENT2, MOSCATO$MP_POURCENT3, MOSCATO$MP_PDL1_PCI)
+
 names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.NIP"] <- "NIP"
-names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT0_PDL1"] <- "MP_POURCENT0_PDL1"
-names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT1_PDL1"] <- "MP_POURCENT1_PDL1"
-names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT2_PDL1"] <- "MP_POURCENT2_PDL1"
-names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT3_PDL1"] <- "MP_POURCENT3_PDL1"
+#names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT0_PDL1"] <- "MP_POURCENT0_PDL1"
+#names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT1_PDL1"] <- "MP_POURCENT1_PDL1"
+#names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT2_PDL1"] <- "MP_POURCENT2_PDL1"
+#names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT3_PDL1"] <- "MP_POURCENT3_PDL1"
+names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT0"] <- "MP_POURCENT0"
+names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT1"] <- "MP_POURCENT1"
+names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT2"] <- "MP_POURCENT2"
+names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_POURCENT3"] <- "MP_POURCENT3"
 names(dMOSCATO)[names(dMOSCATO) == "MOSCATO.MP_PDL1_PCI"] <- "MP_PDL1_PCI"
 
 RESULT <- merge(dClinicRNA, RESULT, by = "NIP")
 
 RESULT <- merge(dMOSCATO, RESULT, by = "NIP")
 
-#Filtrage des données inexploitables (données quantitatives manquantes)
+#Filtrage des donnÃ©es inexploitables (donnÃ©es quantitatives manquantes)
 
 RESULT <- filter(RESULT, RESULT$CD3D != "NA" & RESULT$OS != "NA" 
                  & RESULT$CD8_MP_AC_DENSMOY != "NA" & RESULT$MP_POURCENT3_PDL1!="NA" 
                  & RESULT$MP_PDL1_PCI != "" & RESULT$CD3_MP_AC_DIST_IT != "NA" 
                  & RESULT$FOXP3_MP_AC_DIST_SD != "NA" & RESULT$MP_PDL1_PCI != "")
+
+
 #One-hot encoding
 
 names = c("Sexe_patient", "GlobalHisto","TCGA","CODE_PATHOLOGIE_Simbad","Organe","Lesion")
@@ -108,13 +126,22 @@ for (i in names){
   }
 }
 
-#Élimination des données catégorielles trop peu représentées : limite ici = 6
+#Ã‰limination des donnÃ©es catÃ©gorielles trop peu reprÃ©sentÃ©es : limite ici = 6
+
+#for (i in colnames(RESULT)) {
+#  if (sum(RESULT[[i]]) < 6) {
+#    RESULT[[i]] <- NULL
+#  }
+#}
 
 for (i in colnames(RESULT)) {
-  if (sum(RESULT[[i]]) < 6) {
-    RESULT[[i]] <- NULL
+  if (is.numeric(RESULT[[i]])) {
+      if (sum(RESULT[[i]]) < 6) {
+        RESULT[[i]] <- NULL
+      }
   }
 }
+
 
 RESULT["GlobalHisto : "] <- NULL
 RESULT["GlobalHisto : NA"] <- NULL
@@ -126,7 +153,7 @@ write.csv2(RESULT, "Onehot_wNA.csv")
 #m_correlation <- cor(R1, method = "kendall", use = "pairwise.complete.obs")
 #write.csv2(m_correlation, "Correlations.csv")
 
-# ############################### Corrélations ######################
+# ############################### CorrÃ©lations ######################
 # data_correlation <- RESULT1
 # data_correlation$NIP <- NULL
 # data_correlation$Sexe_patient <- NULL
