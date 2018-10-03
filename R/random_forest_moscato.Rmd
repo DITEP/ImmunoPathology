@@ -9,7 +9,7 @@ library("randomForestSRC")
 library("survival")
 library("pec")
 #all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep="\t", na.strings="NA", dec=",")
-all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep=";", na.strings="NA", dec=",",row.names=1)[,-c(1,14)]
+all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep=";", na.strings="NA", dec=",",row.names=1)[,-c(1)]
 n_tree_values <- list(43,45,47)
 n_split_values <- list(4,5)
 split_rule_values <- list("logrank") 
