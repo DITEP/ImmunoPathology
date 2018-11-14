@@ -1,0 +1,296 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+## Essai du Modele sans test ni validation set
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library("randomForestSRC")
+library("survival")
+library("pec")
+all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep="\t", na.strings="NA", dec=",")
+n_tree_values <- list(43,45,47)
+n_split_values <- list(4,5)
+split_rule_values <- list("logrank") 
+n <- names(all_data)
+surv <- as.formula(paste("Surv(OS,STATUS)~",paste(n[!n %in% "y"], collapse = " + ")))
+
+x<- NULL
+best_n_tree <-NULL
+best_n_split <- NULL
+best_split_rule <- NULL
+for (n_tree in n_tree_values) {
+  for (n_split in n_split_values){
+    for (split_rule in split_rule_values){
+      rfsrc.obj <- rfsrc(surv, data = all_data, nsplit = as.integer(n_split), ntree = n_tree, splitrule = split_rule)
+      prederr <- rfsrc.obj$err.rate
+      for (i in prederr) {
+          if (!is.nan(i)) {
+            score<-i
+          }
+      }
+      print(score)
+      if (is.null(x)|| x>score) {
+        x<-score
+        best_n_tree <-n_tree
+        best_n_split <- n_split
+        best_split_rule <- split_rule
+      }
+    }
+  }
+}
+res <- list(x,best_n_tree,best_n_split,best_split_rule)
+print(res)
+```
+
+
+## Entrainement du modèle avec les hyperparamètres séléctionnés à la cross-validation precedentes
+
+```{r message=FALSE, warning=FALSE}
+v.out <- rfsrc(surv,all_data,nsplit = res[[3]], ntree=res[[2]], forest=T, splitrule = res [[4]])
+print(v.out)
+prederr<-pec(list(v.out), data= all_data, splitMethod = "cv10", B = 20, reference = FALSE,maxtime = 400)
+print(prederr)
+```
+## Affichage de la coube du score de Brier
+```{r}
+plot(prederr)
+```
+
+## Tracer d'une courbe de survie pour un patient
+```{r}
+values<- list()
+for (i in 1:100) {
+  values[['y']][[i]] <- predictSurvProb(v.out, newdata = all_data[4,], times = i * 36,525)
+  values[['x']][[i]]<-i/10
+  
+}
+plot(values,ylim = c(0,1), ylab = "Probabilité de survie", xlab = "Durée en année")
+```
+## entrainement du modèle avec validation et test set 
+
+```{r warning=FALSE, warning=FALSE}
+library("randomForestSRC")
+library("survival")
+library("pec")
+
+
+all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep="\t", na.strings="NA", dec=",")
+## 75% of the sample size
+smp_size <- floor(0.70 * nrow(all_data))
+
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(all_data)), size = smp_size)
+train <- all_data[train_ind, ]
+test <- na.omit(all_data[-train_ind, ])
+smp_size_validation <- floor(0.5 * nrow(test))
+validation_ind <-sample(seq_len(nrow(test)), size = smp_size_validation)
+validation <- na.omit(test[validation_ind, ])
+test <- na.omit(test[-validation_ind, ])
+
+n_tree_values <- list(47)
+n_split_values <- list(4)
+split_rule_values <- list("logrank") 
+n <- names(all_data)
+surv <- as.formula(paste("Surv(OS,STATUS)~",paste(n[!n %in% "y"], collapse = " + ")))
+
+x<- NULL
+best_n_tree <-NULL
+best_n_split <- NULL
+best_split_rule <- NULL
+for (n_tree in n_tree_values) {
+  for (n_split in n_split_values){
+    for (split_rule in split_rule_values){
+      rfsrc.obj <- rfsrc(surv, data = train, nsplit = as.integer(n_split), ntree = n_tree, splitrule = split_rule)
+      prederr <- predict(rfsrc.obj,validation)$err.rate
+      
+      for (i in prederr) {
+          if (!is.nan(i)) {
+            score<-i
+          }
+      }
+      print(score)
+      if (is.null(x)|| x>score) {
+        x<-score
+        best_n_tree <-n_tree
+        best_n_split <- n_split
+        best_split_rule <- split_rule
+      }
+    }
+  }
+}
+res <- list(x,best_n_tree,best_n_split,best_split_rule)
+print(res)
+```
+
+```{r message=FALSE, warning=FALSE}
+v.out <- rfsrc(surv,train,nsplit = 4, ntree=47, forest=T, splitrule = "logrank")
+print(v.out)
+prederr<-pec(list(v.out), data= test, splitMethod = "none",reference = FALSE,maxtime = 400,exact = TRUE)
+
+print(prederr$observed.maxtime)
+print(prederr$AppErr)
+print(prederr$time)
+print(prederr)
+plot(prederr$time,prederr$BootcvErr$rfsrc, xlim = c(0,200))
+
+
+rfsrc.obj <- rfsrc(Surv(OS,STATUS)~ ., all_data, forest=T, splitrule = "logrank")
+pec.f <- as.formula(Hist(OS,STATUS) ~ 1)
+prederror.pbc <- pec(list(rfsrc.obj), data = all_data, formula = pec.f,splitMethod = "loocv",reference = TRUE,maxtime = 600)
+print((prederror.pbc$loocvErr$Reference))
+print(prederror.pbc)
+plot(prederror.pbc)
+print(rfsrc.obj)
+vim <- vimp(rfsrc.obj)$impo
+print(vim)
+names (vim)
+for (name in names(vim)){
+  if (vim[name]<0){
+    all_data[name] <- NULL
+    }
+}
+```
+
+
+
+
+```{r}
+
+j=5
+smp_size <- floor(j/10 * nrow(all_data))
+train_ind <- sample(seq_len(nrow(all_data)), size = smp_size)
+train <- all_data[train_ind, ]
+rfsrc.obj <- rfsrc(Surv(OS,STATUS)~ ., train,nsplit = 4, ntree=47, forest=T, splitrule = "logrank")
+pec.f <- as.formula(Hist(OS,STATUS) ~ 1)
+prederror.pbc <- pec(list(rfsrc.obj), data = train, formula = pec.f,splitMethod = "loocv",reference = TRUE,maxtime = 600)
+plot(prederror.pbc)
+print(rfsrc.obj)
+
+```
+```{r}
+v.out$err.rate[[length(v.out$err.rate)]]
+res<- predict(v.out,test)
+print(res)
+```
+## Tracer d'une courbe de survie pour un patient
+```{r}
+values<- list()
+for (i in 1:100) {
+  values[['y']][[i]]<- predictSurvProb(v.out, newdata = test[1,], times = i * 3,65)
+  values[['x']][[i]]<-i/10
+  
+}
+plot(values,ylim = c(0,1), ylab = "Probabilité de survie", xlab = "Durée en année")
+```
+
+```{r}
+vim <- vimp(rfsrc.obj)$impo
+print(vim)
+names (vim)
+for (name in names(vim)){
+  if (vim[name]<0){
+    all_data[name] <- NULL
+    }
+  }
+```
+# Courbe d'apprentissage sans cross-validation
+```{r}
+library("randomForestSRC")
+library("survival")
+library("pec")
+
+all_data <- read.csv(file="Onehot_mean.csv", header=TRUE, sep="\t", na.strings="NA", dec=",")
+all_data['FOXP3_MP_AC_DENSMIN'] <- NULL
+
+
+n_tree_values <- list(47)
+n_split_values <- list(4)
+split_rule_values <- list("logrank") 
+n <- names(all_data)
+surv <- as.formula(paste("Surv(OS,STATUS)~",paste(n[!n %in% "y"], collapse = " + ")))
+
+
+
+x<- NULL
+res <- NULL
+values_rsf<- list()
+values_ref<- list()
+current <- list()
+time <- list()
+for (j in 50:100) {
+        
+    smp_size <- floor(j/100 * nrow(all_data))
+    train_ind <- sample(seq_len(nrow(all_data)), size = smp_size)
+    train <- all_data[train_ind, ]
+    rfsrc.obj <- rfsrc(Surv(OS,STATUS)~ ., train,nsplit = 4, ntree=47, forest=T, splitrule = "logrank")
+    pec.f <- as.formula(Hist(OS,STATUS) ~ 1)
+    prederror.pbc <- pec(list(rfsrc.obj), data = train, formula = pec.f,splitMethod = "loocv",reference = TRUE,maxtime = 600)
+    for (i in 1:30) {
+      current[[i]] <- prederror.pbc$loocvErr$rfsrc[length(prederror.pbc$loocvErr$rfsrc)- j]
+    }
+    values_rsf[[j-49]] <- mean(as.numeric(current))
+    for (i in 1:30) {
+      current[[i]] <- prederror.pbc$loocvErr$Reference[length(prederror.pbc$loocvErr$Reference)-j]
+    }
+    values_ref[[j-49]] <- mean(as.numeric(current)) 
+    time[[j]] <- prederror.pbc$time[length( prederror.pbc$time)-1]
+}
+print(prederror.pbc$time)
+print(prederror.pbc$loocvErr$Reference[length(prederror.pbc$loocvErr$Reference)-1])
+plot(y=values_rsf, x = 50:100)
+ length(values_rsf)
+mean(as.numeric(values_ref))
+saveq = values_ref
+svea = values_rsf
+```
+
+```{r}
+plot(values,xlab = "Proportion du data set utilisée pour le training (%)", ylab = "Erreur")
+```
+# courbe d'apprentissage avec une cross validation en bootstrap
+```{r message=FALSE, warning=FALSE}
+library("randomForestSRC")
+library("survival")
+library("pec")
+
+all_data <- read.csv(file="Onehot_mean.csv", header=TRUE, sep="\t", na.strings="NA", dec=",")
+
+
+
+n_tree <- 47
+n_split <-4
+split_rule <-"logrank" 
+n <- names(all_data)
+surv <- as.formula(paste("Surv(OS,STATUS)~",paste(n[!n %in% "y"], collapse = " + ")))
+
+x<-NULL
+values<- list()
+for (j in 50:90) {
+  smp_size <- floor(j/100 * nrow(all_data))
+  score <- list()
+  for (i in 1:500){
+    train_ind <- sample(seq_len(nrow(all_data)), size = smp_size)
+    train <- all_data[train_ind, ]
+    test <- all_data[-train_ind, ]
+    rfsrc.obj <- rfsrc(surv, data = train, nsplit = as.integer(n_split), ntree = n_tree, splitrule = split_rule)
+    prederr <- predict(rfsrc.obj,test)$err.rate
+    prederr <- prederr[[length(prederr)]]
+    score[[i]]<-prederr
+  }
+  score <- mean(unlist(score))
+  values[['y']][[j]]<- score
+  values[['x']][[j]]<-j
+  values<-na.omit(values)
+  
+}
+
+res <- list(x,best_n_tree,best_n_split,best_split_rule)
+print(prederr)
+plot(values)
+train_ind <- sample(seq_len(nrow(all_data)), size = smp_size)
+```
+
+
