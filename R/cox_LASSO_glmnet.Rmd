@@ -1,0 +1,167 @@
+---
+title: "Cox+LASSO glmnet"
+author: "Leo Colmet-Daage"
+output: html_notebook
+---
+
+```{r}
+library(survminer)
+library(survival)
+#install.packages("caret")
+library(caret)
+#install.packages("penalized")
+library(penalized)
+```
+
+```{r}
+all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep=";", na.strings="NA", dec=",",row.names=1)
+
+
+MP_bin<-model.matrix(~0+all_data$MP_PDL1_PCI,all_data)
+colnames(MP_bin)<-c("MP_PDL1_PCI0","MP_PDL1_PCI1","MP_PDL1_PCI2","MP_PDL1_PCI3")
+all_var_bin<-cbind(all_data[-c(1,6,16,17)],MP_bin)  
+  
+covar<-colnames(all_var_bin)  
+```
+
+```{r}
+#basic cox
+res.cox <- coxph(Surv(OS, STATUS) ~ as.character(Sexe_patient...M), data=all_data)
+summary(res.cox)
+
+
+
+univ_formulas <- sapply(covar, function(x) as.formula(paste('Surv(OS, STATUS)~', x)))
+
+univ_models <- lapply( univ_formulas, function(x){coxph(x, data = all_data)})     
+
+
+univ_results <- lapply(univ_models,
+                       function(x){ 
+                          x <- summary(x)
+                          p.value<-signif(x$wald["pvalue"], digits=2)
+                          wald.test<-signif(x$wald["test"], digits=2)
+                          beta<-signif(x$coef[1], digits=2);#coeficient beta
+                          HR <-signif(x$coef[2], digits=2);#exp(beta)
+                          HR.confint.lower <- signif(x$conf.int[,"lower .95"], 2)
+                          HR.confint.upper <- signif(x$conf.int[,"upper .95"],2)
+                          HR <- paste0(HR, " (", 
+                                       HR.confint.lower, "-", HR.confint.upper, ")")
+                          res<-c(beta, HR, wald.test, p.value)
+                          names(res)<-c("beta", "HR (95% CI for HR)", "wald.test", 
+                                        "p.value")
+                          return(res)
+                          return(exp(cbind(coef(x),confint(x))))
+                         })                    
+         
+univ_results$MP_PDL1_PCI<-univ_results$MP_PDL1_PCI[1:4]
+res <- t(as.data.frame(univ_results, check.names = FALSE))
+as.data.frame(res)
+  
+
+#multicox              
+paste(covar,collapse=" + ")
+
+res.cox.mult <- coxph(Surv(all_data$OS, all_data$STATUS) ~ MP_POURCENT0 + MP_POURCENT1 + MP_POURCENT2 + MP_POURCENT3 + CD274 + PDCD1 + CD8A + CD3G + CD3E + CD3D + FOXP3 + LAG3 + Age_biopsie + CD3_MP_AC_DENSMOY + CD3_MP_AC_DENSMIN + CD3_MP_AC_DENSMAX + CD3_MP_AC_DIST_IT + CD3_MP_AC_DIST_IST + CD3_MP_AC_DIST_SD + CD8_MP_AC_DENSMOY + CD8_MP_AC_DENSMIN + CD8_MP_AC_DENSMAX + CD8_MP_AC_DIST_IT + CD8_MP_AC_DIST_IST + CD8_MP_AC_DIST_SD + FOXP3_MP_AC_DENSMOY + FOXP3_MP_AC_DENSMIN + FOXP3_MP_AC_DENSMAX + FOXP3_MP_AC_DIST_IT + FOXP3_MP_AC_DIST_IST + FOXP3_MP_AC_DIST_SD + Sexe_patient...F + Sexe_patient...M + GlobalHisto...BREAST + GlobalHisto...GASTRO.INTESTINAL + GlobalHisto...GYNECOLOGICAL.SPHERE + GlobalHisto...HEAD.AND.NECK + GlobalHisto...LUNG + GlobalHisto...UROLOGICAL.SPHERE + Organe...DP + Organe...FF + Organe...LO + Organe...OT + Organe...RP + Organe...SG + MP_PDL1_PCI0 + MP_PDL1_PCI1 + MP_PDL1_PCI2 + MP_PDL1_PCI3 , data =  all_var_bin)
+summary(res.cox.mult)
+
+
+
+sex_df <- with(all_data,
+               data.frame(Sexe_patient...M = c(0,1), Age_biopsie = rep(mean(Age_biopsie, na.rm = TRUE), 2))
+               )
+sex_df
+
+
+fit<-survfit(res.cox, newdata=sex_df)
+
+ggsurvplot(fit, data=sex_df, conf.int = TRUE, legend.labs=c("Sex=0", "Sex=1"),ggtheme = theme_minimal())
+```
+
+
+```{r}
+# compute near 0 variance variables identification:
+near_zero = nearZeroVar(all_var_bin, freqCut = 99/1, uniqueCut = 10, saveMetrics = TRUE)
+low_variance_cols <- near_zero[(near_zero$zeroVar == TRUE) | (near_zero$nzv == TRUE), ]
+nrow(low_variance_cols)
+
+```
+
+```{r}
+##COX+LASSO glmnet
+# Split the data
+set.seed(1)
+## Randomly sample cases to create independent training and test data
+partition = createDataPartition(all_data[,'STATUS'], times = 1, p = 0.7, list = FALSE)
+
+training_var <- all_var_bin[partition,] # Create the training sample
+training_surv <-all_data[partition,c(16,17)]
+
+test_var <- all_var_bin[-partition,]# Create the test sample
+test_surv<-all_data[-partition,c(16,17)]
+
+#Running 100 times the cross validation procedure and stocking each lambda.min
+lambda.min = NULL
+COEF=NULL
+for(i in 1:100){
+  set.seed(i)
+  cvfit<- cv.glmnet(as.matrix(training_var[-which(training_surv$OS==0),]),Surv(training_surv$OS[-which(training_surv$OS==0)],training_surv$STATUS[-which(training_surv$OS==0)]), family="cox", alpha=1)
+
+  lambda.min<-cbind(lambda.min,cvfit$lambda.min)
+
+  COEF<-cbind(COEF,as.matrix(coef(cvfit,s="lambda.min")))
+}
+
+#Runing a new regression with each lambda.min
+allcoef = NULL
+for(i in 1:100){
+  set.seed(i)
+  fit<-glmnet(as.matrix(training_var[-which(training_surv$OS==0),]),Surv(training_surv$OS[-which(training_surv$OS==0)],training_surv$STATUS[-which(training_surv$OS==0)]), family = "cox", alpha = 1, lambda=lambda.min[i])
+
+  coefficients <- coef(fit, s = lambda.min[i])
+  allcoef<-cbind(allcoef,as.matrix(coefficients))
+}
+
+#search which model is the most call
+l.coef<-list()
+l.coefpo<-list()
+for(i in 1:100){
+  l.coef[[i]]<-names(which(allcoef[,i]!=0))
+}
+
+sort(table(sapply(l.coef,paste,collapse=",")))
+
+
+#model that was found 37 times
+active_coefficients37 <- allcoef[,1] != 0
+allcoef[active_coefficients37,1]
+
+#model that was found 35 times
+active_coefficients35 <- allcoef[,2] != 0
+allcoef[active_coefficients35,2]
+
+
+# compute preditions on the test cohort for model 37
+pred37<-exp(as.matrix(test_var)%*%as.matrix(allcoef[,1]))
+
+
+# compute preditions on the test cohort for model 35
+pred35<-exp(as.matrix(test_var)%*%as.matrix(allcoef[,2]))
+
+
+# compute statistics: Concordance index for model 37
+library(survcomp)
+concordance.index(x=pred37,  surv.time=test_surv$OS, surv.event=test_surv$STATUS, method="noether")$c.index
+
+# compute statistics: Concordance index for model 35
+concordance.index(x=pred35, surv.time=test_surv$OS,  surv.event=test_surv$STATUS, method="noether")$c.index
+
+
+par(mar=c(15, 13 ,4.1 ,2.1))
+bar37=barplot(allcoef[active_coefficients37,1],las=2,cex.names=0.8,main="model 37",ylim = c(-1.5,1))
+text(bar37,allcoef[active_coefficients37,1]+0.05,round(allcoef[active_coefficients37,1],digits = 3))
+```
+
+
+
+
