@@ -3,7 +3,7 @@ library(dplyr)
 library(dummies)
 library(zoo)
 
-########### PROJET INNO : 2eme JET DE DONNÉES ##########################
+########### PROJET INNO : 2eme JET DE DONNÃ‰ES ##########################
 
 # Lecture des fichiers
 IHC <- read.csv(file="E:/Leo/Bioinfo/Project/Imuno_loic/IHCimmuno/IHC_total_V3_M2421.csv", header=TRUE, sep=";", na.strings="NA", dec=",",skip=1)
@@ -107,6 +107,8 @@ CheckHscore<-merge(dClinicRNA[,c(1,9)],H,by=1,all.x=TRUE)
 CheckHscore<-data.frame(CheckHscore,absDiff=abs(CheckHscore$H_score-CheckHscore$H))
 head(CheckHscore[order(CheckHscore$absDiff,decreasing = TRUE),],n=10)
 
+#continue with my_Hscore
+dClinicRNA$H_score<-NULL
 
 dMOSCATO <- data.frame(MOSCATO$NIP, MOSCATO$MP_POURCENT0, MOSCATO$MP_POURCENT1, MOSCATO$MP_POURCENT2, 
                        MOSCATO$MP_POURCENT3, MOSCATO$MP_PDL1_PCI,H$H)
@@ -148,7 +150,7 @@ RESULT<-cbind(RESULT,Organe_PDL1)
 
 
 
-#Filtrage des données inexploitables (données quantitatives manquantes)
+#Filtrage des donnÃ©es inexploitables (donnÃ©es quantitatives manquantes)
 
 #RESULT <- filter(RESULT, RESULT$CD3D != "NA" & RESULT$OS != "NA" 
 #                & RESULT$CD8_MP_AC_DENSMOY != "NA" & RESULT$MP_POURCENT3_PDL1!="NA" 
@@ -157,7 +159,7 @@ RESULT<-cbind(RESULT,Organe_PDL1)
 
 
 
-RESULT <- filter(RESULT, !is.na(RESULT$OS)  & !is.na(RESULT$Age_biopsie)  & !is.na(RESULT$STATUT)  & !is.na(RESULT$H_score) 
+RESULT <- filter(RESULT, !is.na(RESULT$OS)  & !is.na(RESULT$Age_biopsie)  & !is.na(RESULT$STATUT) 
                  & !is.na(RESULT$MP_POURCENT0)  & !is.na(RESULT$MP_POURCENT1)  & !is.na(RESULT$MP_POURCENT2)  & !is.na(RESULT$MP_POURCENT3) 
                 & !is.na(RESULT$MP_PDL1_PCI)
                 & !is.na(RESULT$CD8_MP_AC_DENSMOY)
@@ -188,6 +190,7 @@ names = c("GlobalHisto","Organe","Lesion","Organe_PDL1")
 
 for (i in names){
   d <- dummy(RESULT[[i]], sep = " : ", verbose = TRUE)
+  RESULT[[i]] <- NULL
   colnames(d) <- gsub("RESULT", i, fixed = TRUE, colnames(d))
   RESULT <- cbind(RESULT, d)
 }
@@ -196,7 +199,7 @@ for (i in names){
 
 
 
-#Élimination des données catégorielles trop peu représentées : limite ici = 6
+#Ã‰limination des donnÃ©es catÃ©gorielles trop peu reprÃ©sentÃ©es : limite ici = 6
 
 ##for (i in colnames(RESULT)) {
 ##    if (sum(RESULT[[i]]) < 6) {
@@ -220,7 +223,7 @@ write.csv2(RESULT, "Onehot_noNA_v2.csv")
 #m_correlation <- cor(R1, method = "kendall", use = "pairwise.complete.obs")
 #write.csv2(m_correlation, "Correlations.csv")
 
-# ############################### Corrélations ######################
+# ############################### CorrÃ©lations ######################
 # data_correlation <- RESULT1
 # data_correlation$NIP <- NULL
 # data_correlation$Sexe_patient <- NULL
