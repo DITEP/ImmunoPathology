@@ -63,7 +63,8 @@ plot(prederr)
 ```{r}
 values<- list()
 for (i in 1:100) {
-  values[['y']][[i]] <- predictSurvProb(v.out, newdata = all_data[4,], times = i * 36,525)
+  #values[['y']][[i]] <- predictSurvProb(v.out, newdata = all_data[4,], times = i * 36,525)
+  values[['y']][[i]] <- predictSurvProb(v.out, newdata = all_data[4,], times = i)
   values[['x']][[i]]<-i/10
   
 }
