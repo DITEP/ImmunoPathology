@@ -70,7 +70,7 @@ CheckAge<-data.frame(NIP=ClinicRNA$NIP.1,DATE_NAISSANCE=ClinicRNA$DATE_NAISSANCE
 head(CheckAge[order(CheckAge$absDiff,decreasing = TRUE),],n=10)
 
 #Compute STATUT
-STATUT<-as.numeric(!is.na(ClinicRNA$DATE_DECES_Simbad))
+STATUS<-as.numeric(!is.na(ClinicRNA$DATE_DECES_Simbad))
 
 
 #Compute OS
@@ -82,7 +82,7 @@ OS<-as.numeric(OS)*0.0328767
 
 
 dClinicRNA <- data.frame(ClinicRNA$NIP.1, ClinicRNA$Organe, ClinicRNA$GlobalHisto, ClinicRNA$Lesion, 
-                         ClinicRNA$PS, ClinicRNA$RMH, ClinicRNA$MTA_fu, ClinicRNA$IO_fu, ClinicRNA$H_score, DiffMonth,STATUT, OS)
+                         ClinicRNA$PS, ClinicRNA$RMH, ClinicRNA$MTA_fu, ClinicRNA$IO_fu, ClinicRNA$H_score, DiffMonth,STATUS, OS)
 
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.NIP.1"] <- "NIP"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.Organe"] <- "Organe"
@@ -94,7 +94,7 @@ names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.MTA_fu"] <- "MTA_fu"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.IO_fu"] <- "IO_fu"
 names(dClinicRNA)[names(dClinicRNA) == "ClinicRNA.H_score"] <- "H_score"
 names(dClinicRNA)[names(dClinicRNA) == "DiffMonth"]<-"Age_biopsie"
-names(dClinicRNA)[names(dClinicRNA) == "OS"]<-"OS"
+
 
 
 
@@ -159,7 +159,7 @@ RESULT<-cbind(RESULT,Organe_PDL1)
 
 
 
-RESULT <- filter(RESULT, !is.na(RESULT$OS)  & !is.na(RESULT$Age_biopsie)  & !is.na(RESULT$STATUT) 
+RESULT <- filter(RESULT, !is.na(RESULT$OS)  & !is.na(RESULT$Age_biopsie)  & !is.na(RESULT$STATUS) 
                  & !is.na(RESULT$MP_POURCENT0)  & !is.na(RESULT$MP_POURCENT1)  & !is.na(RESULT$MP_POURCENT2)  & !is.na(RESULT$MP_POURCENT3) 
                 & !is.na(RESULT$MP_PDL1_PCI)
                 & !is.na(RESULT$CD8_MP_AC_DENSMOY)
