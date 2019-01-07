@@ -217,7 +217,7 @@ for (i in colnames(RESULT)) {
 
 
 
-write.csv2(RESULT, "Onehot_noNA_v2.csv",,row.names = FALSE)
+write.csv2(RESULT, "Onehot_noNA_v2.csv",row.names = FALSE)
 
 
 #m_correlation <- cor(R1, method = "kendall", use = "pairwise.complete.obs")
