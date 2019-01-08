@@ -161,7 +161,7 @@ RESULT<-cbind(RESULT,Organe_PDL1)
 
 RESULT <- filter(RESULT, !is.na(RESULT$OS)  & !is.na(RESULT$Age_biopsie)  & !is.na(RESULT$STATUS) 
                  & !is.na(RESULT$MP_POURCENT0)  & !is.na(RESULT$MP_POURCENT1)  & !is.na(RESULT$MP_POURCENT2)  & !is.na(RESULT$MP_POURCENT3) 
-                & !is.na(RESULT$MP_PDL1_PCI) 
+                & !is.na(RESULT$MP_PDL1_PCI)  & RESULT$MP_PDL1_PCI != ""
                 & !is.na(RESULT$CD8_MP_AC_DENSMOY)
                 & !is.na(RESULT$CD8_MP_AC_DIST_IT)  & !is.na(RESULT$CD8_MP_AC_DIST_IST)  & !is.na(RESULT$CD8_MP_AC_DIST_SD)
                 & !is.na(RESULT$CD3_MP_AC_DENSMOY)  
