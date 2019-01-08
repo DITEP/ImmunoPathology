@@ -69,7 +69,7 @@ CheckAge<-data.frame(NIP=ClinicRNA$NIP.1,DATE_NAISSANCE=ClinicRNA$DATE_NAISSANCE
 
 head(CheckAge[order(CheckAge$absDiff,decreasing = TRUE),],n=10)
 
-#Compute STATUT
+#Compute STATUS
 STATUS<-as.numeric(!is.na(ClinicRNA$DATE_DECES_Simbad))
 
 
