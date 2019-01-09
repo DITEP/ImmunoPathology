@@ -16,8 +16,6 @@ all_data <- read.csv(file="Onehot_noNA_v2.csv", header=TRUE, sep=";", na.strings
 
 all_data$my_Hscore<-NULL
 
-#all_data$my_Hscore<-NULL
-
 n_tree_values <- list(43,45,47)
 n_split_values <- list(4,5)
 split_rule_values <- list("logrank") 
@@ -54,7 +52,7 @@ print(res)
 ```
 
 
-## Entrainement du modéle avec les hyperparamétres selectionés avec la cross-validation precedentes
+## Entrainement du modÃ©le avec les hyperparamÃ©tres selectionÃ©s avec la cross-validation precedentes
 
 ```{r message=FALSE, warning=FALSE}
 v.out <- rfsrc(surv,all_data,nsplit = res[[3]], ntree=res[[2]], forest=T, splitrule = res [[4]],tree.err=TRUE,importance=TRUE)
