@@ -1,0 +1,283 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+## Essai du Modele sans test ni validation set
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library("randomForestSRC")
+library("survival")
+library("pec")
+
+#all_data <- read.csv(file="Onehot_wNA.csv", header=TRUE, sep="\t", na.strings="NA", dec=",",row)
+all_data <- read.csv(file="Onehot_noNA_v2.csv", header=TRUE, sep=";", na.strings="NA", dec=",",row.names=1)
+
+all_data$my_Hscore<-NULL
+
+#all_data$my_Hscore<-NULL
+
+n_tree_values <- list(43,45,47)
+n_split_values <- list(4,5)
+split_rule_values <- list("logrank") 
+n <- names(all_data)
+surv <- as.formula(paste("Surv(OS,STATUS)~",paste(n[!n %in% "y"], collapse = " + ")))
+
+x<- NULL
+best_n_tree <-NULL
+best_n_split <- NULL
+best_split_rule <- NULL
+for (n_tree in n_tree_values) {
+  for (n_split in n_split_values){
+    for (split_rule in split_rule_values){
+      rfsrc.obj <- rfsrc(surv, data = all_data, nsplit = as.integer(n_split), ntree = n_tree, splitrule = split_rule)
+      prederr <- pec(list(rfsrc.obj), data= all_data, splitMethod = "cv10", B = 20, reference = FALSE,formula = surv)$AppErr$rfsrc
+      for (i in prederr) {
+          if (!is.nan(i)) {
+            score<-i
+          }
+      }
+      print(score)
+      if (is.null(x) || x>score ) {
+        x<-score
+        best_n_tree <-n_tree
+        best_n_split <- n_split
+        best_split_rule <- split_rule
+      }
+    }
+  }
+}
+
+res <- list(x,best_n_tree,best_n_split,best_split_rule)
+print(res)
+```
+
+
+## Entrainement du modéle avec les hyperparamétres selectionés avec la cross-validation precedentes
+
+```{r message=FALSE, warning=FALSE}
+v.out <- rfsrc(surv,all_data,nsplit = res[[3]], ntree=res[[2]], forest=T, splitrule = res [[4]],tree.err=TRUE,importance=TRUE)
+print(v.out)
+prederr<-pec(list(v.out), data= all_data, splitMethod = "cv10", B = 20, reference = FALSE,maxtime = 400)
+```
+
+## Affichage de la coube du score de Brier
+```{r}
+plot(prederr)
+```
+
+```{r}
+plot.survival.rfsrc(v.out,plots.one.page = FALSE)
+```
+
+```{r}
+#ggRandomForest
+library("ggplot2")
+library("RColorBrewer")
+library("dplyr")
+library("ggRandomForests")
+
+
+gg_dta <- gg_survival(interval = "OS",censor = "STATUS",data = all_data,conf.int = 0.95)
+plot(gg_dta) + labs(y = "Survival Probability", x = "Observation Time (month)") + theme(legend.position = c(0.2, 0.2)) + coord_cartesian(y = c(0, 1.01))
+
+gg_dta_PS <- gg_survival(interval = "OS",censor = "STATUS",by="PS",data = all_data,conf.int = 0.95)
+plot(gg_dta_PS) + labs(y = "Survival Probability", x = "Observation Time (month)",color = "PS", fill = "PS") + theme(legend.position = c(0.2, 0.2)) + coord_cartesian(y = c(0, 1.01))
+
+gg_dta_RMH <- gg_survival(interval = "OS",censor = "STATUS",by="RMH",data = all_data,conf.int = 0.95)
+plot(gg_dta_RMH) + labs(y = "Survival Probability", x = "Observation Time (month)",color = "RMH", fill = "RMH") + theme(legend.position = c(0.2, 0.2)) + coord_cartesian(y = c(0, 1.01))
+```
+
+
+```{r}
+
+plot(gg_dta, type = "cum_haz") + labs(y = "Cumulative Hazard", x = "Observation Time (month)") + theme(legend.position = c(0.2, 0.8)) + coord_cartesian(ylim = c(-0.02, 1.22))
+
+plot(gg_dta_PS, type = "cum_haz") + labs(y = "Cumulative Hazard", x = "Observation Time (month)", color = "PS", fill = "PS") + theme(legend.position = c(0.2, 0.8)) + coord_cartesian(ylim = c(-0.02, 1.22))
+
+plot(gg_dta_RMH, type = "cum_haz") + labs(y = "Cumulative Hazard", x = "Observation Time (month)", color = "RMH", fill = "RMH") + theme(legend.position = c(0.2, 0.8)) + coord_cartesian(ylim = c(-0.02, 1.22))
+```
+
+```{r}
+strCol <- brewer.pal(3, "Set1")[c(2,1,3)]
+ggRFsrc <- plot(gg_rfsrc(v.out), alpha = 0.2) +
+ scale_color_manual(values = strCol) +
+ theme(legend.position = "none") +
+ labs(y = "Survival Probability", x = "Time (month)") +
+ coord_cartesian(ylim = c(-0.01, 1.01))
+
+ show(ggRFsrc)
+
+```
+Random forest OOB predicted survival. Blue curves correspond to censored observations, red curves correspond to observations experiencing death events.
+```{r}
+plot(gg_rfsrc(v.out, by = "PS")) +
+theme(legend.position = c(0.2, 0.2)) +
+labs(y = "Survival Probability", x = "Time (month)") +
+ggtitle("PS") + 
+coord_cartesian(ylim = c(-0.01, 1.01))
+
+```
+
+```{r}
+plot(gg_vimp(v.out)) + theme(legend.position = c(0.8, 0.2)) + labs(fill = "VIMP > 0")
+
+```
+Random forest Variable Importance (VIMP). Blue bars indicates positive VIMP,
+red indicates negative VIMP. Importance is relative to positive length of bars.
+VIMP for a variable x is the difference between prediction error when x is randomly permuted, compared to
+prediction error under the observed values
+Since VIMP is the difference in OOB prediction error before and after permutation, a large
+VIMP value indicates that misspecification detracts from the predictive accuracy in the forest.
+VIMP close to zero indicates the variable contributes nothing to predictive accuracy, and
+negative values indicate the predictive accuracy improves when the variable is misspecified.
+In the later case, we assume noise is more informative than the true variable. As such, we
+ignore variables with negative and near zero values of VIMP, relying on large positive values
+to indicate that the predictive power of the forest is dependent on those variables
+```{r}
+varsel <- var.select(v.out)
+
+```
+```{r}
+gg_md <- gg_minimal_depth(varsel)
+
+plot(gg_md)
+
+```
+Minimal Depth variable selection. Low minimal depth indicates important variables. The dashed line is the threshold of maximum value for variable selection.
+ranking variables from most important at the top (minimal depth measure), to least at the bottom
+(maximal minimal depth). The vertical dashed line indicates the minimal depth threshold
+where smaller minimal depth values indicate higher importance and larger values indicate
+lower importance.
+
+```{r}
+plot(gg_minimal_vimp(gg_md)) + theme(legend.position=c(0.8, 0.2))
+```
+Comparing Minimal Depth and Vimp rankings. Points on the red dashed line
+are ranked equivalently, points above have higher VIMP ranking, those below have higher
+minimal depth ranking.
+The points along the red dashed line indicate where the measures are in agreement. Points
+above the red dashed line are ranked higher by VIMP than by minimal depth, indicating the 
+variables are more sensitive to misspecification. Those below the line have a higher minimal
+depth ranking, indicating they are better at dividing large portions of the population. The
+further the points are from the line, the more the discrepancy between measures
+
+
+
+
+As random forest is not parsimonious, we have used minimal depth and VIMP to reduce
+the number of variables to a manageable subset. Once we have an idea of which variables
+contribute most to the predictive accuracy of the forest, we would like to know how the
+response depends on these variables
+```{r}
+
+ggRFsrc + geom_vline(aes(xintercept = 1), linetype = "dashed") +
+geom_vline(aes(xintercept = 10), linetype = "dashed") +
+coord_cartesian(xlim = c(0, 15))
+
+
+```
+
+```{r}
+gg_v <- gg_variable(v.out, time = c(1,10), time.labels = c("1 month", "10 month"))
+
+event.labels <- c(FALSE, TRUE)
+event.marks <- c(1, 4)
+
+plot(gg_v, xvar = "CD3_MP_AC_DENSMOY", alpha = 0.4) + #, se=FALSE 
+labs(y = "Survival", x = "CD3_MP_AC_DENSMOY") +
+theme(legend.position = "none") +
+scale_color_manual(values = strCol, labels = event.labels) +
+scale_shape_manual(values = event.marks, labels = event.labels) +
+coord_cartesian(ylim = c(-0.01, 1.01))
+```
+Variable dependence of survival at 1 and 10 month on Age_biopsie variable. Individual cases
+are marked with blue circles (alive or censored) and red x (dead). Loess smooth curve with
+shaded 95% confidence band indicates decreasing survival with increasing bilirubin.
+
+
+```{r}
+plot(gg_v, xvar = "PS", alpha = 0.4) + #, se=FALSE 
+labs(y = "Survival", x = "PS") +
+theme(legend.position = "none") +
+scale_color_manual(values = strCol, labels = event.labels) +
+scale_shape_manual(values = event.marks, labels = event.labels) +
+coord_cartesian(ylim = c(-0.01, 1.01))
+```
+```{r}
+xvar <- c("CD3_MP_AC_DENSMOY", "CD8_MP_AC_DENSMOY","FOXP3_MP_AC_DENSMOY")
+
+plot(gg_v, xvar = xvar, panel = TRUE, alpha = 0.4) +
+labs(y = "Survival") +
+theme(legend.position = "none") +
+scale_color_manual(values = strCol, labels = event.labels) +
+scale_shape_manual(values = event.marks, labels = event.labels) +
+coord_cartesian(ylim = c(-0.05, 1.2))
+
+```
+
+```{r}
+#partial dependence
+time_index <- c(which(v.out$time.interest > 1)[1]-1,
+which(v.out$time.interest > 10)[1]-1,
+which(v.out$time.interest > 15)[1]-1)
+
+
+xvar <- c("CD3_MP_AC_DENSMOY", "CD8_MP_AC_DENSMOY","FOXP3_MP_AC_DENSMOY","PS")
+partial_pbc <- mclapply(v.out$time.interest[time_index],
+function(tm){
+plot.variable(v.out, surv.type = "surv",
+time = tm, xvar.names = xvar,
+partial = TRUE ,
+show.plots = FALSE)
+ })
+
+gg_dta <- mclapply(partial_pbc, gg_partial)
+
+pbc_ggpart <- combine.gg_partial(gg_dta[[1]], gg_dta[[2]], lbls = c("1 month", "10 month"))
+
+ggplot(pbc_ggpart[["PS"]], aes(y=yhat, x=PS, col=group)) +
+geom_boxplot(notch = TRUE, outlier.shape = NA) +
+labs(x = "PS", y = "Survival (%)", color="Time", shape="Time") +
+theme()
+
+```
+
+```{r}
+ggplot(pbc_ggpart[["CD3_MP_AC_DENSMOY"]], aes(y=yhat, x=CD3_MP_AC_DENSMOY, col=group)) +
+geom_point() + geom_smooth() +
+labs(x = "CD3_MP_AC_DENSMOY", y = "Survival (%)", color="Time", shape="Time") +
+theme()
+
+```
+
+```{r}
+#variable interactions
+ggint <- gg_interaction(v.out)
+xvar <- c("CD3_MP_AC_DENSMOY", "CD8_MP_AC_DENSMOY","FOXP3_MP_AC_DENSMOY","PS")
+plot(ggint, xvar = xvar)
+
+```
+
+```{r}
+#conditional dependence plots
+ggvar <- gg_variable(v.out, time = 10)
+ggvar$PS <- paste("PS = ", ggvar$PS, sep = "")
+
+var_dep <- plot(ggvar, xvar = "CD3_MP_AC_DENSMOY",
+alpha = 0.5) +
+# geom_smooth(method = "glm",se = FALSE) +
+labs(y = "Survival at 10 month",
+x = "CD3_MP_AC_DENSMOY") +
+theme(legend.position = "none") +
+scale_color_manual(values = strCol, labels = event.labels) +
+scale_shape_manual(values = event.marks, labels = event.labels) +
+coord_cartesian(y = c(-.01,1.01))
+
+var_dep
+```
+```{r}
+var_dep + facet_grid(~PS)
+```
+
