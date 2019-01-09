@@ -26,7 +26,7 @@ for (n_tree in n_tree_values) {
   for (n_split in n_split_values){
     for (split_rule in split_rule_values){
       rfsrc.obj <- rfsrc(surv, data = all_data, nsplit = as.integer(n_split), ntree = n_tree, splitrule = split_rule)
-      prederr <- pec(list(rfsrc.obj), data= all_data, splitMethod = "cv10", B = 20, reference = FALSE)$BootCvErr$rfsrc
+      prederr <- pec(list(rfsrc.obj), data= all_data, splitMethod = "cv10", B = 20, reference = FALSE)$AppErr$rfsrc
       for (i in prederr) {
           if (!is.nan(i)) {
             score<-i
