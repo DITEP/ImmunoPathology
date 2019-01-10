@@ -79,15 +79,15 @@ for(i in 1:100){
 df_coef<-allcoef[active_coef,model_col]
 
 
-# compute predictions on the test cohort for model 55
+# compute predictions on the test cohort for the model found the most
 pred55<-exp(as.matrix(test_var)%*%as.matrix(allcoef[,which(model_col==TRUE)[[1]]]))
 
-# compute statistics: Concordance index for model 55
+# compute statistics: Concordance index for the model found the most
 library(survcomp)
 concordance.index(x=pred55,  surv.time=test_surv$OS, surv.event=test_surv$STATUS, method="noether")$c.index
 
 
-#compute Mean,Max,Min of coeff for the 55 model
+#compute Mean,Max,Min of coeff for the model found the most
 df_coef<-cbind(exp(rowMeans(df_coef)),exp(rowMin(df_coef)),exp(rowMax(df_coef)))
 colnames(df_coef)<-c("Mean","Min","Max")
 df_coef<-as.data.frame(df_coef)
