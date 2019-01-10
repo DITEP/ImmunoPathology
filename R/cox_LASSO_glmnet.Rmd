@@ -20,9 +20,7 @@ all_data <- read.csv(file="Onehot_noNA_v2.csv", header=TRUE, sep=";", na.strings
 MP_bin<-model.matrix(~0+all_data$MP_PDL1_PCI,all_data)
 colnames(MP_bin)<-c("MP_PDL1_PCI0","MP_PDL1_PCI1","MP_PDL1_PCI2","MP_PDL1_PCI3")
 all_var_bin<-cbind(all_data[,-5],MP_bin)  
-covar<-colnames(all_var_bin)  
  
-  
 ```
 
 ```{r}
