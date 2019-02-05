@@ -11,6 +11,7 @@ library(caret)
 library(penalized)
 library(glmnet)
 library(dplyr)
+library(Biobase)
 ```
 
 ```{r}
@@ -80,11 +81,11 @@ df_coef<-allcoef[active_coef,model_col]
 
 
 # compute predictions on the test cohort for the model found the most
-pred55<-exp(as.matrix(test_var)%*%as.matrix(allcoef[,which(model_col==TRUE)[[1]]]))
+pred<-exp(as.matrix(test_var)%*%as.matrix(allcoef[,which(model_col==TRUE)[[1]]]))
 
 # compute statistics: Concordance index for the model found the most
 library(survcomp)
-concordance.index(x=pred55,  surv.time=test_surv$OS, surv.event=test_surv$STATUS, method="noether")$c.index
+concordance.index(x=pred,  surv.time=test_surv$OS, surv.event=test_surv$STATUS, method="noether")$c.index
 
 
 #compute Mean,Max,Min of coeff for the model found the most
