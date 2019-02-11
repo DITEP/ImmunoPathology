@@ -6,12 +6,6 @@ output: html_notebook
 import packages
 ```{r}
 library("randomForestSRC")
-library("survival")
-library("pec")
-library("ggplot2")
-library("RColorBrewer")
-library("dplyr")
-library("ggRandomForests")
 ```
 
 
@@ -28,7 +22,7 @@ surv <- as.formula(paste("Surv(OS,STATUS)~",paste(n[!n %in% "y"], collapse = " +
 
 run the experiments n times
 ```{r}
-n_experiences = 1000
+n_experiences = 10
 
 for (ind_exp  in 1:n_experiences) {
   v.out <- rfsrc(surv,all_data,nsplit = 4, ntree=45, forest=T, splitrule = "logrank",tree.err=TRUE,importance=TRUE)
@@ -40,7 +34,7 @@ for (ind_exp  in 1:n_experiences) {
     vims <- rbind(vim,vims)
     }
 }
-vims <- as_data_frame(vims)
+vims <- as.data.frame(vims)
 ```
 
 plot the boxplot with all the variables
@@ -52,7 +46,6 @@ select the variables with a mean superior to a threshold and plot the correcpond
 ```{r}
 print(names(vims))
 m <- colMeans(vims)
-m <- as_data_frame(m)
 interest_variables <-c()
 names<- names(vims)
 mean_treshold <- 0.0001
