@@ -1,0 +1,66 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+import packages
+```{r}
+library("randomForestSRC")
+library("survival")
+library("pec")
+library("ggplot2")
+library("RColorBrewer")
+library("dplyr")
+library("ggRandomForests")
+```
+
+
+
+
+import data
+```{r}
+all_data <- read.csv(file="data/Onehot_noNA_v2.csv", header=TRUE, sep=";", na.strings="NA", dec=",",row.names=1)
+all_data$my_Hscore<-NULL
+all_data$PS<-NULL
+n <- names(all_data)
+surv <- as.formula(paste("Surv(OS,STATUS)~",paste(n[!n %in% "y"], collapse = " + ")))
+```
+
+run the experiments n times
+```{r}
+n_experiences = 1000
+
+for (ind_exp  in 1:n_experiences) {
+  v.out <- rfsrc(surv,all_data,nsplit = 4, ntree=45, forest=T, splitrule = "logrank",tree.err=TRUE,importance=TRUE)
+  vim <- vimp(v.out)$impo
+  if (ind_exp == 1) {
+    vims <- vim
+  }
+  else{
+    vims <- rbind(vim,vims)
+    }
+}
+vims <- as_data_frame(vims)
+```
+
+plot the boxplot with all the variables
+```{r}
+boxplot(vims,las=2,cex=0.2,cex.axis=0.4)
+```
+
+select the variables with a mean superior to a threshold and plot the correcponding box plot
+```{r}
+print(names(vims))
+m <- colMeans(vims)
+m <- as_data_frame(m)
+interest_variables <-c()
+names<- names(vims)
+mean_treshold <- 0.0001
+for (name in names) {
+  if (m[name] >mean_treshold){
+    interest_variables <- c(interest_variables,name)
+    }
+}
+boxplot(vims[interest_variables],las=2,cex=0.2,cex.axis=0.4)
+```
+
